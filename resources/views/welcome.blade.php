@@ -12,10 +12,7 @@
         
         <header class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
             <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    
-                    <span class="text-xl font-black tracking-tighter uppercase text-gray-900">Kamy-<span class="text-blue-600">Shop</span></span>
-                </div>
+                <x-logo />
 
                 @if (Route::has('login'))
                     <nav class="flex items-center gap-4">
