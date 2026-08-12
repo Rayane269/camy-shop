@@ -4,7 +4,7 @@
             <i data-lucide="lock" class="w-3 h-3"></i> Accès Sécurisé
         </div>
         <h2 class="text-3xl font-black text-gray-900 tracking-tighter uppercase">Connectez-<span class="text-blue-600">vous</span></h2>
-        <p class="text-gray-400 text-xs font-bold mt-2 uppercase tracking-wide">Heureux de vous revoir sur Ray-Shop</p>
+        <p class="text-gray-400 text-xs font-bold mt-2 uppercase tracking-wide">Heureux de vous revoir sur Camy-Shop</p>
     </div>
 
     <x-auth-session-status class="mb-4 font-bold text-sm text-green-600 bg-green-50 p-4 rounded-2xl border border-green-100" :status="session('status')" />
