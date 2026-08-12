@@ -3,9 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\URL; // <-- Ajoutez cet import si absent
+use Illuminate\Support\Facades\URL;
 
-class AppServiceProvider extends ServiceProvider
+class HttpsServiceProvider extends ServiceProvider // <-- Vérifiez bien "HttpsServiceProvider" ici !
 {
     /**
      * Register any application services.
@@ -20,7 +20,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Forcer le schéma HTTPS en environnement de production / sur Render
         if (config('app.env') === 'production' || request()->header('X-Forwarded-Proto') === 'https') {
             URL::forceScheme('https');
         }
