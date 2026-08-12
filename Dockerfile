@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.3-fpm
 
 # Installation des dépendances système (avec libicu-dev et libzip-dev)
 RUN apt-get update && apt-get install -y \
