@@ -3,7 +3,7 @@ FROM php:8.2-fpm
 # Installation des dépendances système et des extensions PHP
 RUN apt-get update && apt-get install -y \
     git unzip libpng-dev libonig-dev libxml2-dev libpq-dev zip curl nginx \
-    && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exts opcache gd
+    && docker-php-ext-install pdo pdo_pgsql pgsql mbstring opcache gd
 
 # Installation de Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
