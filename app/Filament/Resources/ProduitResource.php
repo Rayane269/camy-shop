@@ -40,8 +40,7 @@ class ProduitResource extends Resource
                 TextInput::make('stock')
                     ->numeric()
                     ->required(),
-                FileUpload::make('image')
-                    ->required()
+                
             ]);
     }
 
@@ -58,8 +57,7 @@ class ProduitResource extends Resource
                     ->money('KMF'),
                 TextColumn::make('stock')
                     ->numeric(),
-                ImageColumn::make('image')
-                    ->circular(),
+               
             ])
             ->filters([
                 //
