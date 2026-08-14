@@ -56,21 +56,6 @@
             {{-- Formulaire de paiement --}}
             <div class="md:col-span-3">
                 <div class="bg-white shadow-sm border border-gray-100 rounded-3xl p-8">
-                    
-                    {{-- WIDGET CONNEXION ÉCRAN CLIENT (VFD / AFFICHEUR POLE) --}}
-                    <div class="mb-6 flex items-center justify-between bg-gray-50 p-3.5 rounded-2xl border border-gray-200">
-                        <div class="flex items-center gap-2 text-xs font-bold text-gray-700">
-                            <i data-lucide="tv" class="w-4 h-4 text-blue-600"></i>
-                            <span>Écran client :</span>
-                            <span id="afficheur_status" class="text-red-500 font-black">Déconnecté</span>
-                        </div>
-                        <button type="button" id="btn_connecter_afficheur" 
-                                class="px-3 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-xl hover:bg-black transition flex items-center gap-1.5 shadow-sm">
-                            <i data-lucide="plug" class="w-3.5 h-3.5"></i>
-                            Connecter l'écran
-                        </button>
-                    </div>
-
                     <form method="POST" id="formulaire_paiement" action="{{ route('paiements.store', $commande) }}" class="space-y-6">
                         @csrf
                         
@@ -156,24 +141,6 @@
     </div>
 
     <script>
-        // Variables pour la gestion du port série (Web Serial API)
-        let portSerie = null;
-        let writer = null;
-
-        async function envoyerSurAfficheur(valeur) {
-            if (writer) {
-                try {
-                    // \x0C (chr 12) = Effacer l'écran VFD / ESC POS
-                    // Envoie la valeur formatée (ex: "5000" ou "5000.00")
-                    const message = '\x0C' + String(valeur) + '\r\n'; 
-                    const encoder = new TextEncoder();
-                    await writer.write(encoder.encode(message));
-                } catch (e) {
-                    console.error("Erreur d'envoi sur l'écran client :", e);
-                }
-            }
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
@@ -193,37 +160,6 @@
             const totalRaw = document.getElementById('total_commande').value;
             const totalCommande = Number(String(totalRaw).replace(/[^0-9.-]+/g, '')) || 0;
 
-            // Connexion Web Serial API (Chrome/Chromium sur Debian)
-            const btnConnecter = document.getElementById('btn_connecter_afficheur');
-            const statusText = document.getElementById('afficheur_status');
-
-            btnConnecter?.addEventListener('click', async () => {
-                if (!('serial' in navigator)) {
-                    alert("Votre navigateur ne supporte pas la connexion série (Web Serial API). Utilisez Google Chrome ou Chromium sur Debian.");
-                    return;
-                }
-
-                try {
-                    // Demande à l'utilisateur de choisir le port /dev/ttyUSB0 ou /dev/ttyS0
-                    portSerie = await navigator.serial.requestPort();
-                    await portSerie.open({ baudRate: 9600 });
-
-                    writer = portSerie.writable.getWriter();
-
-                    statusText.innerText = "Connecté";
-                    statusText.className = "text-green-600 font-black";
-                    btnConnecter.classList.remove('bg-gray-900', 'hover:bg-black');
-                    btnConnecter.classList.add('bg-green-600', 'hover:bg-green-700');
-
-                    // Affiche le total dès la connexion
-                    envoyerSurAfficheur(totalCommande);
-                } catch (err) {
-                    console.error("Erreur de connexion au port série :", err);
-                    statusText.innerText = "Non connecté";
-                    statusText.className = "text-red-500 font-black";
-                }
-            });
-
             function initialiserCalculateur() {
                 blocMonnaie.classList.add('hidden');
                 errorApi.classList.add('hidden');
@@ -234,9 +170,6 @@
                 btnEncaisser.disabled = false;
                 btnEncaisser.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-400');
                 btnEncaisser.classList.add('bg-green-600', 'hover:bg-green-700');
-
-                // Re-affiche le total sur l'écran
-                envoyerSurAfficheur(totalCommande);
             }
 
             function verifierModeEspeces() {
@@ -262,8 +195,6 @@
                     labelRenduReste.innerText = "Monnaie à rendre";
                     containerRendu.className = "w-full bg-white border border-gray-200 rounded-xl py-3 px-4 font-black text-xl text-green-600 flex items-center justify-between";
                     errorApi.classList.add('hidden');
-
-                    envoyerSurAfficheur(totalCommande);
                     return;
                 }
 
@@ -278,9 +209,6 @@
                     
                     errorMessage.innerText = `Le montant saisi est insuffisant. Il manque ${manque.toLocaleString('fr-FR')} KMF pour valider cet achat.`;
                     errorApi.classList.remove('hidden');
-
-                    // Afficher le solde restant à payer sur l'écran
-                    envoyerSurAfficheur(manque);
                 } else {
                     const rendu = recu - totalCommande;
                     monnaieRendu.innerText = rendu.toLocaleString('fr-FR');
@@ -288,9 +216,6 @@
                     
                     containerRendu.className = "w-full bg-green-50 border border-green-300 rounded-xl py-3 px-4 font-black text-xl text-green-600 flex items-center justify-between";
                     errorApi.classList.add('hidden');
-
-                    // Afficher la monnaie rendue au client
-                    envoyerSurAfficheur(rendu);
                 }
             });
 
