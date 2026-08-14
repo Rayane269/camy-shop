@@ -6,7 +6,7 @@
             </h2>
             <div class="flex items-center gap-3">
                 <span class="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-200 animate-pulse">
-                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span> Scanner Prêt
+                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span> Scanner Instantané Prêt
                 </span>
             </div>
         </div>
@@ -20,6 +20,7 @@
                 
                 <div class="lg:col-span-2 space-y-6">
                     
+                    {{-- CLIENT --}}
                     <div class="overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white shadow-[0_12px_45px_-20px_rgba(15,23,42,0.25)]">
                         <div class="flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-white via-blue-50/40 to-white px-6 py-4">
                             <div class="flex items-center gap-2">
@@ -56,6 +57,7 @@
                         </div>
                     </div>
 
+                    {{-- PANIER --}}
                     <div class="overflow-hidden rounded-[1.5rem] border border-gray-200 bg-white shadow-[0_12px_45px_-20px_rgba(15,23,42,0.25)]">
                         <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                             <div class="flex items-center gap-2">
@@ -77,9 +79,9 @@
                         </div>
                     </div>
 
-                 
                 </div>
 
+                {{-- RÉSUMÉ CAISSE --}}
                 <div class="space-y-6">
                     <div class="sticky top-6 rounded-[1.75rem] border border-gray-200 bg-white p-6 shadow-[0_12px_45px_-20px_rgba(15,23,42,0.25)]">
                         <h3 class="mb-6 border-b border-gray-100 pb-4 text-sm font-black uppercase tracking-widest text-gray-800">Résumé Caisse</h3>
@@ -135,9 +137,97 @@
         let articleIndex = 0;
         const produits = @json($produitsFormates);
         const clientsData = @json($clientsPayload);
+        
+        // --- OPTIMISATION DU SCANNER ---
+        const produitMap = new Map();
+        produits.forEach(p => {
+            if (p.code_barre) produitMap.set(String(p.code_barre).trim(), p);
+        });
+
         let barcodeBuffer = "";
-        let lastKeyTime = Date.now();
+        let lastKeyTime = 0;
+        let lastScannedCode = "";
+        let lastScanTime = 0;
         let clientMode = 'standard';
+
+        // Bip sonore de confirmation (Web Audio API)
+        function playBeep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1200, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.08);
+            } catch (e) {}
+        }
+
+        // Ecouteur d'événement ultra-rapide optimisé pour Douchettes/Scanners
+        window.addEventListener('keydown', (e) => {
+            const currentTime = Date.now();
+            
+            // Un scanner saisit des caractères extrêmement vite (< 40ms entre chaque)
+            if (currentTime - lastKeyTime > 100) {
+                barcodeBuffer = "";
+            }
+            
+            if (e.key === 'Enter') {
+                if (barcodeBuffer.trim().length >= 2) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const codeScanne = barcodeBuffer.trim();
+                    barcodeBuffer = "";
+                    
+                    // Anti-rebond (Empêche un double scan involontaire en moins de 300ms)
+                    if (codeScanne === lastScannedCode && (currentTime - lastScanTime) < 300) {
+                        return;
+                    }
+                    
+                    lastScannedCode = codeScanne;
+                    lastScanTime = currentTime;
+                    handleScan(codeScanne);
+                }
+            } else if (e.key.length === 1) {
+                barcodeBuffer += e.key;
+            }
+            
+            lastKeyTime = currentTime;
+        }, true);
+
+        function handleScan(code) {
+            // Recherche instantanée dans la Map (O(1))
+            const produit = produitMap.get(code);
+            if (produit) {
+                playBeep();
+                ajouterOuIncrementerProduit(produit);
+            } else {
+                console.warn('Produit non trouvé pour le code :', code);
+            }
+        }
+
+        function ajouterOuIncrementerProduit(produit) {
+            let ligneExistante = null;
+            document.querySelectorAll('.produit-select').forEach(select => {
+                if (select.value == produit.id) {
+                    ligneExistante = select.closest('.article-item');
+                }
+            });
+
+            if (ligneExistante) {
+                const qtyInput = ligneExistante.querySelector('.quantite');
+                const nouvelleQty = parseInt(qtyInput.value) + 1;
+                if (nouvelleQty <= produit.stock) {
+                    qtyInput.value = nouvelleQty;
+                    updatePrix(ligneExistante.querySelector('.produit-select'));
+                }
+            } else {
+                ajouterArticle(produit.id);
+            }
+        }
 
         function setClientMode(mode) {
             clientMode = mode;
@@ -201,49 +291,6 @@
         }
 
         setClientMode('standard');
-
-        window.addEventListener('keydown', (e) => {
-            const currentTime = Date.now();
-            // Certaines pistolets sont plus lents : on laisse jusqu'à 1 seconde entre les touches.
-            if (currentTime - lastKeyTime > 1000) barcodeBuffer = "";
-            if (e.key === 'Enter') {
-                if (barcodeBuffer.trim().length > 2) {
-                    e.preventDefault();
-                    handleScan(barcodeBuffer.trim());
-                    barcodeBuffer = "";
-                }
-            } else if (e.key.length === 1) {
-                barcodeBuffer += e.key;
-            }
-            lastKeyTime = currentTime;
-        });
-
-        function handleScan(code) {
-            const produit = produits.find(p => p.code_barre === code);
-            if (produit) {
-                ajouterOuIncrementerProduit(produit);
-            }
-        }
-
-        function ajouterOuIncrementerProduit(produit) {
-            let ligneExistante = null;
-            document.querySelectorAll('.produit-select').forEach(select => {
-                if (select.value == produit.id) {
-                    ligneExistante = select.closest('.article-item');
-                }
-            });
-
-            if (ligneExistante) {
-                const qtyInput = ligneExistante.querySelector('.quantite');
-                const nouvelleQty = parseInt(qtyInput.value) + 1;
-                if (nouvelleQty <= produit.stock) {
-                    qtyInput.value = nouvelleQty;
-                    updatePrix(ligneExistante.querySelector('.produit-select'));
-                }
-            } else {
-                ajouterArticle(produit.id);
-            }
-        }
 
         function ajouterArticle(produitId = "") {
             document.getElementById('empty-state').classList.add('hidden');
@@ -323,7 +370,7 @@
         function updatePrix(select) {
             const option = select.selectedOptions[0];
             const item = select.closest('.article-item');
-            if (option.value) {
+            if (option && option.value) {
                 const prix = parseFloat(option.dataset.prix);
                 item.querySelector('.prix-unitaire').value = prix.toLocaleString() + ' KMF';
                 item.querySelector('.quantite').max = option.dataset.stock;
