@@ -10,8 +10,9 @@ use App\Models\Paiement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Events\ProductScanned;
-// Importations pour l'impression thermique ESC/POS
-use Mike42\Escpos\PrintConnectors\CupsPrintConnector;
+
+// Importations pour l'impression thermique ESC/POS sous Linux Debian
+use Mike42\Escpos\PrintConnectors\FilePrintConnector;
 use Mike42\Escpos\Printer;
 
 class CommandeController extends Controller
@@ -55,7 +56,6 @@ class CommandeController extends Controller
 
     /**
      * OPÉRATION DE RETOUR SÉCURISÉE (48H + VERROU CLÔTURE + TRANSACTION SQL)
-     * CORRIGÉ : Utilise désormais l'ID transmis par l'URL pour éviter le bug d'injection
      */
     public function effectuerRetour(Request $request, $id)
     {
@@ -324,14 +324,19 @@ class CommandeController extends Controller
         return view('factures.ticket', compact('commande'));
     }
 
+    /**
+     * IMPRESSION PHYSIQUE DIRECTE SUR LA MINI-IMPRIMANTE THERMIQUE DEBIAN POSIKEX (/dev/lp0)
+     */
     public function imprimerTicketPhysique(Commande $commande)
     {
         $commande->load(['items.produit', 'client', 'paiement']);
 
         try {
-            $connector = new CupsPrintConnector("Epson_TM-T88III");
+            // Utilisation du port d'impression parallèle/USB direct sous Debian (/dev/lp0)
+            $connector = new FilePrintConnector("/dev/lp0");
             $printer = new Printer($connector);
 
+            // --- EN-TÊTE ---
             $printer->setJustification(Printer::JUSTIFY_CENTER);
             $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH | Printer::MODE_DOUBLE_HEIGHT);
             $printer->text("RAY-MULTITECH\n");
@@ -341,9 +346,10 @@ class CommandeController extends Controller
             $printer->text("Tel : +269 448 04 33\n");
             
             $nomCaissier = auth()->user() ? auth()->user()->name : 'Caissier';
-            $dateFormatee = $commande->date_commande->format('d/m/y H:i');
+            $dateFormatee = $commande->date_commande ? $commande->date_commande->format('d/m/y H:i') : date('d/m/y H:i');
             $printer->text("Caisse : " . $nomCaissier . " | " . $dateFormatee . "\n");
 
+            // --- CODE-BARRES TICKET ---
             $printer->feed(1);
             $printer->setBarcodeHeight(45);
             $printer->setBarcodeWidth(2);
@@ -355,15 +361,16 @@ class CommandeController extends Controller
 
             $printer->text("--------------------------------\n");
 
+            // --- LISTE DES ARTICLES ---
             $printer->setJustification(Printer::JUSTIFY_LEFT);
             
             foreach ($commande->items as $index => $item) {
                 $numero = $index + 1;
-                $nomArticle = strtoupper($item->produit->nom);
+                $nomArticle = mb_strtoupper($item->produit->nom ?? 'Article');
                 $totalLigne = number_format($item->total, 0, '', ' ');
 
-                if (strlen($nomArticle) > 18) {
-                    $nomArticle = substr($nomArticle, 0, 15) . "...";
+                if (mb_strlen($nomArticle) > 18) {
+                    $nomArticle = mb_substr($nomArticle, 0, 15) . "...";
                 }
 
                 $printer->text(sprintf("%-18s %9s %3s\n", $nomArticle, $totalLigne, $numero));
@@ -377,6 +384,7 @@ class CommandeController extends Controller
 
             $printer->text("--------------------------------\n");
 
+            // --- TOTAUX ET PAIEMENT ---
             $printer->setJustification(Printer::JUSTIFY_LEFT);
             $totalArticles = $commande->items->count();
             $totalMontant = number_format($commande->total, 0, '', ' ') . " KMF";
@@ -387,6 +395,7 @@ class CommandeController extends Controller
             $modePaiement = $commande->paiement->mode_paiement_label ?? 'ESPECES';
             $printer->text(sprintf("%-20s %12s\n", strtoupper($modePaiement), $totalMontant));
 
+            // --- PIED DE PAGE ---
             $printer->feed(1);
             $printer->setJustification(Printer::JUSTIFY_CENTER);
             $printer->text("********************************\n");
@@ -401,13 +410,15 @@ class CommandeController extends Controller
             $printer->text("MERCI DE VOTRE VISITE !\n");
             
             $printer->text("********************************\n");
-            $printer->text("www.raymultitech.com\n");
+            $printer->text("www.librairie-camy.com\n");
 
+            // --- IMPULSION TIROIR-CAISSE & DÉCOUPE ---
+            $printer->pulse();
             $printer->feed(4);
             $printer->cut();
             $printer->close();
 
-            return redirect()->back()->with('success', 'Le ticket physique a été envoyé à l\'imprimante !');
+            return redirect()->back()->with('success', 'Ticket imprimé avec succès sur la mini-imprimante !');
 
         } catch (\Exception $e) {
             return redirect()->back()->with('error', "Erreur d'impression : " . $e->getMessage());

@@ -109,7 +109,7 @@
                         <div id="dernier-article-widget" class="mt-8 pt-6 border-t border-gray-100 hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Dernière détection</p>
                             <div class="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                <img id="dernier-article-image" src="" class="rounded-lg w-16 h-16 object-cover border bg-white">
+                                
                                 <div class="overflow-hidden">
                                     <p id="dernier-article-nom" class="font-bold text-gray-800 truncate text-sm"></p>
                                     <span class="inline-block bg-yellow-400 text-[10px] font-black px-2 py-0.5 rounded mt-1 uppercase">Scan OK</span>
