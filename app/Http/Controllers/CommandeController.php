@@ -181,6 +181,10 @@ class CommandeController extends Controller
         ]);
 
         try {
+            // Reindex items to ensure numeric contiguous keys (fixes sparse indices from JS)
+            $validated['items'] = array_values($validated['items']);
+            \Log::debug('Commande.store payload items', $validated['items']);
+
             $commande = DB::transaction(function () use ($validated) {
                 $clientId = $validated['client_id'] ?? null;
 
@@ -223,17 +227,29 @@ class CommandeController extends Controller
                 $total = 0;
                 foreach ($validated['items'] as $item) {
                     $produit = Produit::find($item['produit_id']);
-                    $sousTotal = $produit->prix * $item['quantite'];
+                    if (!$produit) {
+                        throw new \Exception('Produit introuvable (id: ' . $item['produit_id'] . ')');
+                    }
+
+                    $quantite = (int) $item['quantite'];
+                    if ($quantite < 1) continue;
+
+                    // Optional: prevent selling more than available stock
+                    if ($produit->stock < $quantite) {
+                        throw new \Exception("Stock insuffisant pour {$produit->nom} (disponible: {$produit->stock})");
+                    }
+
+                    $sousTotal = $produit->prix * $quantite;
 
                     CommandeItem::create([
                         'commande_id' => $commande->id,
                         'produit_id' => $item['produit_id'],
-                        'quantite' => $item['quantite'],
+                        'quantite' => $quantite,
                         'prix_unitaire' => $produit->prix,
                         'total' => $sousTotal
                     ]);
 
-                    $produit->decrement('stock', $item['quantite']);
+                    $produit->decrement('stock', $quantite);
                     $total += $sousTotal;
                 }
 
