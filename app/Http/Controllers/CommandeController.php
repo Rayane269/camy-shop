@@ -327,103 +327,13 @@ class CommandeController extends Controller
     /**
      * IMPRESSION PHYSIQUE DIRECTE SUR LA MINI-IMPRIMANTE THERMIQUE DEBIAN POSIKEX (/dev/lp0)
      */
-    public function imprimerTicketPhysique(Commande $commande)
-    {
-        $commande->load(['items.produit', 'client', 'paiement']);
-
-        try {
-            // Utilisation du port d'impression parallèle/USB direct sous Debian (/dev/lp0)
-            $connector = new FilePrintConnector("/dev/lp0");
-            $printer = new Printer($connector);
-
-            // --- EN-TÊTE ---
-            $printer->setJustification(Printer::JUSTIFY_CENTER);
-            $printer->selectPrintMode(Printer::MODE_DOUBLE_WIDTH | Printer::MODE_DOUBLE_HEIGHT);
-            $printer->text("RAY-MULTITECH\n");
-            $printer->selectPrintMode(); 
-            
-            $printer->text("M'DE BAMABAO\n");
-            $printer->text("Tel : +269 448 04 33\n");
-            
-            $nomCaissier = auth()->user() ? auth()->user()->name : 'Caissier';
-            $dateFormatee = $commande->date_commande ? $commande->date_commande->format('d/m/y H:i') : date('d/m/y H:i');
-            $printer->text("Caisse : " . $nomCaissier . " | " . $dateFormatee . "\n");
-
-            // --- CODE-BARRES TICKET ---
-            $printer->feed(1);
-            $printer->setBarcodeHeight(45);
-            $printer->setBarcodeWidth(2);
-            $printer->setBarcodeTextPosition(Printer::BARCODE_TEXT_BELOW);
-            
-            $contenuBarcode = "{B" . $commande->numero_commande;
-            $printer->barcode($contenuBarcode, Printer::BARCODE_CODE128);
-            $printer->feed(1);
-
-            $printer->text("--------------------------------\n");
-
-            // --- LISTE DES ARTICLES ---
-            $printer->setJustification(Printer::JUSTIFY_LEFT);
-            
-            foreach ($commande->items as $index => $item) {
-                $numero = $index + 1;
-                $nomArticle = mb_strtoupper($item->produit->nom ?? 'Article');
-                $totalLigne = number_format($item->total, 0, '', ' ');
-
-                if (mb_strlen($nomArticle) > 18) {
-                    $nomArticle = mb_substr($nomArticle, 0, 15) . "...";
-                }
-
-                $printer->text(sprintf("%-18s %9s %3s\n", $nomArticle, $totalLigne, $numero));
-
-                if ($item->quantite > 1) {
-                    $qty = $item->quantite;
-                    $prixUni = number_format($item->prix_unitaire, 0, '', ' ');
-                    $printer->text(sprintf("   %dx %s KMF\n", $qty, $prixUni));
-                }
-            }
-
-            $printer->text("--------------------------------\n");
-
-            // --- TOTAUX ET PAIEMENT ---
-            $printer->setJustification(Printer::JUSTIFY_LEFT);
-            $totalArticles = $commande->items->count();
-            $totalMontant = number_format($commande->total, 0, '', ' ') . " KMF";
-            
-            $labelTotal = "TOTAL " . $totalArticles . " ARTICLE(S)";
-            $printer->text(sprintf("%-20s %12s\n", $labelTotal, $totalMontant));
-            
-            $modePaiement = $commande->paiement->mode_paiement_label ?? 'ESPECES';
-            $printer->text(sprintf("%-20s %12s\n", strtoupper($modePaiement), $totalMontant));
-
-            // --- PIED DE PAGE ---
-            $printer->feed(1);
-            $printer->setJustification(Printer::JUSTIFY_CENTER);
-            $printer->text("********************************\n");
-            $printer->selectPrintMode(Printer::MODE_EMPHASIZED);
-            $printer->text("Ce ticket fait office de garantie\n");
-            $printer->selectPrintMode();
-            
-            $printer->text("\nGARANTIE 1 MOIS SUR L'ELECTRONIQUE\n");
-            $printer->text("RETOUR POSSIBLE SOUS 48H\n");
-            $printer->text("DANS L'EMBALLAGE D'ORIGINE\n");
-            $printer->text("TICKET DE CAISSE OBLIGATOIRE.\n");
-            $printer->text("MERCI DE VOTRE VISITE !\n");
-            
-            $printer->text("********************************\n");
-            $printer->text("www.librairie-camy.com\n");
-
-            // --- IMPULSION TIROIR-CAISSE & DÉCOUPE ---
-            $printer->pulse();
-            $printer->feed(4);
-            $printer->cut();
-            $printer->close();
-
-            return redirect()->back()->with('success', 'Ticket imprimé avec succès sur la mini-imprimante !');
-
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', "Erreur d'impression : " . $e->getMessage());
-        }
-    }
+    /**
+ * REDIRECTION VERS L'IMPRESSION TICKET NAVIGATEUR (Option Production Cloud)
+ */
+public function imprimerTicketPhysique(Commande $commande)
+{
+    return redirect()->route('commandes.ticket', $commande);
+}
 
     public function facture(Commande $commande)
     {

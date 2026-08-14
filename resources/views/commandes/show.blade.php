@@ -211,7 +211,7 @@
                         </div>
                     @endif
 
-                    {{-- BLOC IMPRESSION UNIQUE --}}
+                    {{-- BLOC IMPRESSION OPTIMISÉ POUR MODE KIOSQUE --}}
                     @if($commande->total > 0)
                         <div class="bg-white shadow-sm border border-gray-100 rounded-xl overflow-hidden">
                             <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center gap-2">
@@ -219,9 +219,18 @@
                                 <h3 class="font-bold text-gray-700">Actions d'Impression</h3>
                             </div>
                             <div class="p-6 space-y-3">
-                                <a href="{{ route('commandes.imprimerPhysique', $commande) }}" class="flex items-center justify-center gap-2 w-full bg-green-600 text-white py-3 rounded-lg font-black hover:bg-green-700 shadow-lg shadow-green-100 transition">
-                                    <i data-lucide="printer" class="w-5 h-5"></i> RE-IMPRIMER SUR L'EPSON
-                                </a>
+                                <button type="button" 
+                                        id="btn-imprimer-ticket"
+                                        onclick="imprimerTicketSilent('{{ route('commandes.ticket', $commande) }}')" 
+                                        class="flex items-center justify-center gap-2 w-full bg-green-600 text-white py-3 rounded-lg font-black hover:bg-green-700 shadow-lg shadow-green-100 transition">
+                                    <i data-lucide="printer" class="w-5 h-5"></i> 
+                                    <span id="btn-text">IMPRIMER LE TICKET</span>
+                                </button>
+
+                                <div id="print-success-alert" class="hidden p-3 bg-green-50 border border-green-200 text-green-700 text-xs rounded-lg font-bold flex items-center justify-center gap-2">
+                                    <i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>
+                                    Impression lancée sur l'imprimante POSIKEX !
+                                </div>
                             </div>
                         </div>
                     @endif
@@ -230,9 +239,41 @@
         </div>
     </div>
 
+    <!-- Frame masquée pour le traitement de l'impression en arrière-plan -->
+    <iframe id="print-frame" style="display: none;"></iframe>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
         });
+
+        function imprimerTicketSilent(ticketUrl) {
+            const btn = document.getElementById('btn-imprimer-ticket');
+            const btnText = document.getElementById('btn-text');
+            const alertSuccess = document.getElementById('print-success-alert');
+            const iframe = document.getElementById('print-frame');
+
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            btnText.innerText = 'Impression en cours...';
+
+            iframe.src = ticketUrl;
+
+            iframe.onload = function() {
+                setTimeout(() => {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                    btnText.innerText = 'IMPRIMER LE TICKET';
+                    alertSuccess.classList.remove('hidden');
+
+                    setTimeout(() => {
+                        alertSuccess.classList.add('hidden');
+                    }, 4000);
+                }, 300);
+            };
+        }
     </script>
 </x-app-layout>
