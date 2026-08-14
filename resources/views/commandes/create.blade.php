@@ -109,7 +109,6 @@
                         <div id="dernier-article-widget" class="mt-8 pt-6 border-t border-gray-100 hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Dernière détection</p>
                             <div class="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                
                                 <div class="overflow-hidden">
                                     <p id="dernier-article-nom" class="font-bold text-gray-800 truncate text-sm"></p>
                                     <span class="inline-block bg-yellow-400 text-[10px] font-black px-2 py-0.5 rounded mt-1 uppercase">Scan OK</span>
@@ -138,7 +137,7 @@
         const produits = @json($produitsFormates);
         const clientsData = @json($clientsPayload);
         
-        // --- OPTIMISATION DU SCANNER ---
+        // Map rapide pour Scanner
         const produitMap = new Map();
         produits.forEach(p => {
             if (p.code_barre) produitMap.set(String(p.code_barre).trim(), p);
@@ -150,7 +149,6 @@
         let lastScanTime = 0;
         let clientMode = 'standard';
 
-        // Bip sonore de confirmation (Web Audio API)
         function playBeep() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -166,11 +164,8 @@
             } catch (e) {}
         }
 
-        // Ecouteur d'événement ultra-rapide optimisé pour Douchettes/Scanners
         window.addEventListener('keydown', (e) => {
             const currentTime = Date.now();
-            
-            // Un scanner saisit des caractères extrêmement vite (< 40ms entre chaque)
             if (currentTime - lastKeyTime > 100) {
                 barcodeBuffer = "";
             }
@@ -182,7 +177,6 @@
                     const codeScanne = barcodeBuffer.trim();
                     barcodeBuffer = "";
                     
-                    // Anti-rebond (Empêche un double scan involontaire en moins de 300ms)
                     if (codeScanne === lastScannedCode && (currentTime - lastScanTime) < 300) {
                         return;
                     }
@@ -199,7 +193,6 @@
         }, true);
 
         function handleScan(code) {
-            // Recherche instantanée dans la Map (O(1))
             const produit = produitMap.get(code);
             if (produit) {
                 playBeep();
@@ -295,8 +288,10 @@
         function ajouterArticle(produitId = "") {
             document.getElementById('empty-state').classList.add('hidden');
             const container = document.getElementById('articles-container');
+            const currentIndex = articleIndex;
+            
             const html = `
-                <div class="article-item group rounded-[1.25rem] border border-gray-100 bg-white p-4 shadow-sm transition hover:border-blue-200" data-index="${articleIndex}">
+                <div class="article-item group rounded-[1.25rem] border border-gray-100 bg-white p-4 shadow-sm transition hover:border-blue-200" data-index="${currentIndex}">
                     <div class="grid grid-cols-1 items-end gap-4 md:grid-cols-12">
                         <div class="md:col-span-5">
                             <label class="mb-1 block text-[10px] font-black uppercase tracking-widest text-gray-400">Code produit</label>
@@ -304,7 +299,7 @@
                                 <input type="text" class="code-produit block w-full rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5 text-sm font-bold text-gray-700 focus:border-blue-500 focus:outline-none" placeholder="Saisir le code" onkeydown="if(event.key === 'Enter'){event.preventDefault(); validerCodeProduit(this);}">
                                 <button type="button" onclick="validerCodeProduit(this)" class="rounded-xl bg-blue-600 px-3 py-2 text-sm font-black text-white transition hover:bg-blue-700">OK</button>
                             </div>
-                            <select name="items[${articleIndex}][produit_id]" class="produit-select hidden" required onchange="updatePrix(this)">
+                            <select name="items[${currentIndex}][produit_id]" class="produit-select hidden" required onchange="updatePrix(this)">
                                 <option value="">Choisir...</option>
                                 ${produits.map(p => `<option value="${p.id}" ${p.id == produitId ? 'selected' : ''} data-prix="${p.prix}" data-stock="${p.stock}" data-image="${p.image}" data-code="${p.code_barre}" data-nom="${p.nom}">${p.nom} (Stock: ${p.stock})</option>`).join('')}
                             </select>
@@ -317,7 +312,7 @@
                         <div class="md:col-span-2">
                             <label class="mb-1 block text-center text-[10px] font-black uppercase tracking-widest text-gray-400">Quantité</label>
                             <div class="flex items-center">
-                                <input type="number" name="items[${articleIndex}][quantite]" class="quantite block w-full rounded-lg border border-gray-100 bg-gray-50 p-2 text-center font-black" min="1" value="1" required onchange="calculerTotal()">
+                                <input type="number" name="items[${currentIndex}][quantite]" class="quantite block w-full rounded-lg border border-gray-100 bg-gray-50 p-2 text-center font-black" min="1" value="1" required onchange="updatePrix(this.closest('.article-item').querySelector('.produit-select'))" oninput="updatePrix(this.closest('.article-item').querySelector('.produit-select'))">
                             </div>
                         </div>
                         <div class="md:col-span-2">
@@ -334,13 +329,15 @@
             
             container.insertAdjacentHTML('beforeend', html);
             lucide.createIcons();
-            const newItem = container.querySelector(`.article-item[data-index="${articleIndex}"]`);
+            
+            const newItem = container.querySelector(`.article-item[data-index="${currentIndex}"]`);
             const newSelect = newItem.querySelector('.produit-select');
+            
             if (produitId) {
-                // ensure value is explicitly set (safer than relying on selected attr)
                 newSelect.value = produitId;
                 updatePrix(newSelect);
             }
+            
             articleIndex++;
         }
 
@@ -374,46 +371,53 @@
         }
 
         function updatePrix(select) {
+            if (!select) return;
             const option = select.selectedOptions[0];
             const item = select.closest('.article-item');
+            
             if (option && option.value) {
-                // Robust parsing: remove any non-numeric characters (spaces, thousands sep)
                 let prixRaw = option.dataset.prix ?? '0';
                 let prix = Number(String(prixRaw).replace(/[^0-9.-]+/g, '')) || 0;
+                let qtyInput = item.querySelector('.quantite');
+                let qty = parseInt(qtyInput.value) || 1;
+
                 item.querySelector('.prix-unitaire').value = prix.toLocaleString() + ' KMF';
-                item.querySelector('.quantite').max = option.dataset.stock;
+                qtyInput.max = option.dataset.stock;
                 
                 const codeInput = item.querySelector('.code-produit');
-
-                if (codeInput) {
-                    codeInput.value = option.dataset.code || codeInput.value;
+                if (codeInput && option.dataset.code) {
+                    codeInput.value = option.dataset.code;
                 }
 
-                // Widget Update (sûr si image absent)
+                // Affichage widget
                 document.getElementById('dernier-article-nom').textContent = option.dataset.nom || option.textContent.split('(')[0];
-                const imgEl = document.getElementById('dernier-article-image');
-                if (imgEl && option.dataset.image) imgEl.src = option.dataset.image;
                 document.getElementById('dernier-article-widget').classList.remove('hidden');
                 
-                envoyerArticleEnLive(option.value, item.querySelector('.quantite').value);
+                envoyerArticleEnLive(option.value, qty);
             }
             calculerTotal();
         }
 
         function calculerTotal() {
-            let totalQty = 0; let totalCmd = 0;
+            let totalQty = 0; 
+            let totalCmd = 0;
+            
             document.querySelectorAll('.article-item').forEach(item => {
                 const select = item.querySelector('.produit-select');
                 const qtyInput = item.querySelector('.quantite');
-                if (select.value && qtyInput.value) {
-                    let prixRaw = select.selectedOptions[0].dataset.prix ?? '0';
+                
+                if (select && select.value && qtyInput && qtyInput.value) {
+                    let prixRaw = select.selectedOptions[0]?.dataset.prix ?? '0';
                     let prix = Number(String(prixRaw).replace(/[^0-9.-]+/g, '')) || 0;
                     const qty = parseInt(qtyInput.value) || 0;
                     const subtotal = prix * qty;
+                    
                     item.querySelector('.total-ligne').value = subtotal.toLocaleString() + ' KMF';
-                    totalQty += qty; totalCmd += subtotal;
+                    totalQty += qty; 
+                    totalCmd += subtotal;
                 }
             });
+            
             document.getElementById('total-articles').textContent = totalQty;
             document.getElementById('total-commande').textContent = totalCmd.toLocaleString() + ' KMF';
         }
