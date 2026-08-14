@@ -18,7 +18,7 @@
                         <div class="space-y-4">
                             <div>
                                 <label for="client_id" class="block text-sm font-medium text-gray-700">Client *</label>
-                                <select name="client_id" id="client_id" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <select name="client_id" id="client_id" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     @foreach($clients as $client)
                                         <option value="{{ $client->id }}" {{ $commande->client_id == $client->id ? 'selected' : '' }}>
                                             {{ $client->nom }} {{ $client->prenom }}
@@ -28,7 +28,7 @@
                             </div>
                             <div>
                                 <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
-                                <textarea name="notes" id="notes" rows="2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">{{ old('notes', $commande->notes) }}</textarea>
+                                <textarea name="notes" id="notes" rows="2" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">{{ old('notes', $commande->notes) }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -43,7 +43,10 @@
                             </div>
                         </div>
                         <div id="articles-container" class="space-y-4">
-                            </div>
+                        </div>
+                        <div id="articles-empty" class="text-center text-gray-500 py-6 border-dashed border-2 border-gray-200 rounded-lg mt-4">
+                            Aucun article ajouté. Utilisez le bouton "Manuel" pour en ajouter.
+                        </div>
                     </div>
                 </div>
 
@@ -59,10 +62,10 @@
                             <span id="total-commande" class="font-bold text-2xl text-blue-600">0,00 KMF</span>
                         </div>
                         <div class="space-y-2">
-                            <button type="submit" class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg font-bold hover:bg-blue-700 flex justify-center items-center gap-2">
+                            <button type="submit" class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg font-bold hover:bg-blue-700 flex justify-center items-center gap-2 transition">
                                 <i data-lucide="refresh-cw" class="w-5 h-5"></i> Mettre à jour
                             </button>
-                            <a href="{{ route('commandes.index') }}" class="w-full inline-block text-center bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">
+                            <a href="{{ route('commandes.index') }}" class="w-full inline-block text-center bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-100">
                                 Annuler
                             </a>
                         </div>
@@ -105,26 +108,26 @@
         function ajouterArticle(produitId = "", quantite = 1) {
             const container = document.getElementById('articles-container');
             const html = `
-                <div class="article-item border rounded-lg p-4 bg-gray-50 shadow-sm" data-index="${articleIndex}">
+                <div class="article-item border rounded-lg p-4 bg-white shadow-sm transition hover:shadow-md" data-index="${articleIndex}">
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                         <div class="md:col-span-5">
                             <label class="block text-xs font-bold text-gray-500 uppercase">Produit</label>
-                            <select name="items[${articleIndex}][produit_id]" class="produit-select block w-full border-gray-300 rounded-md mt-1" required onchange="updatePrix(this)">
+                            <select name="items[${articleIndex}][produit_id]" class="produit-select block w-full border border-gray-300 rounded-md mt-1 px-3 py-2" required onchange="updatePrix(this)">
                                 <option value="">Choisir...</option>
                                 ${produits.map(p => `<option value="${p.id}" ${p.id == produitId ? 'selected' : ''} data-prix="${p.prix}" data-stock="${p.stock}">${p.nom}</option>`).join('')}
                             </select>
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-xs font-bold text-gray-500 uppercase">Prix</label>
-                            <input type="text" class="prix-unitaire block w-full border-gray-300 rounded-md mt-1 bg-gray-100" readonly>
+                            <input type="text" class="prix-unitaire block w-full border border-gray-200 rounded-md mt-1 bg-gray-100 px-3 py-2" readonly>
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-xs font-bold text-gray-500 uppercase">Quantité</label>
-                            <input type="number" name="items[${articleIndex}][quantite]" class="quantite block w-full border-gray-300 rounded-md mt-1" min="1" value="${quantite}" required onchange="calculerTotal()">
+                            <input type="number" name="items[${articleIndex}][quantite]" class="quantite block w-full border border-gray-300 rounded-md mt-1 px-3 py-2" min="1" value="${quantite}" required onchange="calculerTotal()">
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-xs font-bold text-gray-500 uppercase">Total</label>
-                            <input type="text" class="total-ligne block w-full border-gray-300 rounded-md mt-1 bg-gray-100 font-bold" readonly>
+                            <input type="text" class="total-ligne block w-full border border-gray-200 rounded-md mt-1 bg-gray-100 font-bold px-3 py-2" readonly>
                         </div>
                         <div class="md:col-span-1 flex items-end justify-center pb-2">
                             <button type="button" onclick="this.closest('.article-item').remove(); calculerTotal();" class="text-red-500 hover:text-red-700">
@@ -136,6 +139,9 @@
             
             container.insertAdjacentHTML('beforeend', html);
             lucide.createIcons();
+            // hide empty placeholder when adding first
+            const empty = document.getElementById('articles-empty');
+            if (empty) empty.style.display = 'none';
             
             const currentSelect = container.querySelector(`[data-index="${articleIndex}"] .produit-select`);
             if(produitId) updatePrix(currentSelect);
@@ -170,6 +176,10 @@
             });
             document.getElementById('total-articles').textContent = totalQty;
             document.getElementById('total-commande').textContent = totalCmd.toLocaleString() + ',00 KMF';
+           // show/hide empty placeholder depending on items
+           const empty = document.getElementById('articles-empty');
+           const hasItems = document.querySelectorAll('.article-item').length > 0;
+           if (empty) empty.style.display = hasItems ? 'none' : 'block';
         }
 
         // INITIALISATION : Charger les items de la commande
