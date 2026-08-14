@@ -15,14 +15,14 @@ class StatsOverview extends BaseWidget
 
     protected function getStats(): array
     {
-        // 1. Calcul du CA du jour (On utilise 'complete' et la colonne 'montant')
-        $ca_jour = Paiement::where('statut_paiement', 'complete')
+        // 1. Calcul du CA du jour (On utilise le statut 'paye' enregistré par la caisse)
+        $ca_jour = Paiement::where('statut_paiement', 'paye')
             ->whereDate('date_paiement', Carbon::today())
             ->sum('montant');
 
         // 2. Calcul du manque à gagner
-        // On considère comme manque à gagner tout ce qui n'est pas au statut 'completed'
-        $manque_a_gagner = Commande::where('statut', '!=', 'completed')
+        // On considère comme manque à gagner tout ce qui est en attente (non encore livré/payé)
+        $manque_a_gagner = Commande::where('statut', 'en_attente')
             ->sum('total');
 
         // 3. Nombre de clients

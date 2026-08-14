@@ -18,13 +18,13 @@ class RevenueChart extends ChartWidget
         $data = collect(range(6, 0))->map(function ($days) {
             $date = Carbon::today()->subDays($days);
             
-            // CORRECTION ICI : statut 'complete', colonne 'montant' et date_paiement
-            $sum = Paiement::where('statut_paiement', 'complete')
+            // CORRECTION : On utilise le statut 'paye' correspondant à l'enregistrement du PaiementController
+            $sum = Paiement::where('statut_paiement', 'paye')
                 ->whereDate('date_paiement', $date)
                 ->sum('montant');
             
             return [
-                'label' => $date->translatedFormat('d M'), // Format plus joli (ex: 25 fév)
+                'label' => $date->translatedFormat('d M'),
                 'aggregate' => $sum,
             ];
         });
@@ -35,7 +35,7 @@ class RevenueChart extends ChartWidget
                     'label' => 'Revenus (KMF)',
                     'data' => $data->pluck('aggregate')->toArray(),
                     'fill' => 'start',
-                    'tension' => 0.4, // Ajoute une jolie courbe lisse
+                    'tension' => 0.4,
                 ],
             ],
             'labels' => $data->pluck('label')->toArray(),
