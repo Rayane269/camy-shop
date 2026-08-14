@@ -27,7 +27,7 @@
         /* Accent header */
         .accent{background:linear-gradient(90deg,var(--accent),var(--accent-2));padding:14px;border-radius:10px;color:#fff;display:flex;justify-content:space-between;align-items:center}
         .accent .left{display:flex;gap:14px;align-items:center}
-        .accent img{width:72px;height:auto;border-radius:6px;background:rgba(255,255,255,0.06);padding:6px}
+        .accent img{width:150px;height:auto;border-radius:6px;background:rgba(255,255,255,0.06);padding:6px}
         .accent .name{font-size:18px;font-weight:800}
         .accent .tag{font-size:12px;opacity:0.95}
 
@@ -76,6 +76,7 @@
                 <div>
                     <div class="name">Librairie Camy</div>
                     <div class="tag">Moroni Iroungoudjani · Comores · librairiecamy@yahoo.fr</div>
+                    <div class="tag">Tél : +269 773 01 69 / +269 333 01 69 / +269 334 57 53</div>
                 </div>
             </div>
             <div class="right">
@@ -127,9 +128,17 @@
 
             <div class="summary">
                 <div class="inner">
-                    <div class="line"><div class="muted">Sous-total</div><div>{{ number_format($commande->total, 0, ',', ' ') }} KMF</div></div>
-                    {{-- Exemple: TVA ou remises peuvent être insérées ici --}}
-                    <div class="line grand"><div>TOTAL À PAYER</div><div>{{ number_format($commande->total, 0, ',', ' ') }} KMF</div></div>
+                    @php
+                        $subtotal = $commande->total ?? 0;
+                        $remise_pct = $commande->remise_pourcentage ?? 0;
+                        $remise_amount = (int) round($subtotal * $remise_pct / 100);
+                        $grand_total = $subtotal - $remise_amount;
+                    @endphp
+
+                    <div class="line"><div class="muted">Sous-total</div><div>{{ number_format($subtotal, 0, ',', ' ') }} KMF</div></div>
+                    <div class="line"><div class="muted">Remise ({{ $remise_pct }}%)</div><div>- {{ number_format($remise_amount, 0, ',', ' ') }} KMF</div></div>
+                    {{-- Exemple: TVA ou autres lignes peuvent être insérées ici --}}
+                    <div class="line grand"><div>TOTAL À PAYER</div><div>{{ number_format($grand_total, 0, ',', ' ') }} KMF</div></div>
                 </div>
             </div>
 
