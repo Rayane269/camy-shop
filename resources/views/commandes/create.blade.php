@@ -212,7 +212,7 @@
         function ajouterOuIncrementerProduit(produit) {
             let ligneExistante = null;
             document.querySelectorAll('.produit-select').forEach(select => {
-                if (select.value == produit.id) {
+                if (String(select.value) === String(produit.id)) {
                     ligneExistante = select.closest('.article-item');
                 }
             });
@@ -334,7 +334,13 @@
             
             container.insertAdjacentHTML('beforeend', html);
             lucide.createIcons();
-            if(produitId) updatePrix(container.querySelector(`[data-index="${articleIndex}"] .produit-select`));
+            const newItem = container.querySelector(`.article-item[data-index="${articleIndex}"]`);
+            const newSelect = newItem.querySelector('.produit-select');
+            if (produitId) {
+                // ensure value is explicitly set (safer than relying on selected attr)
+                newSelect.value = produitId;
+                updatePrix(newSelect);
+            }
             articleIndex++;
         }
 
@@ -371,18 +377,22 @@
             const option = select.selectedOptions[0];
             const item = select.closest('.article-item');
             if (option && option.value) {
-                const prix = parseFloat(option.dataset.prix);
+                // Robust parsing: remove any non-numeric characters (spaces, thousands sep)
+                let prixRaw = option.dataset.prix ?? '0';
+                let prix = Number(String(prixRaw).replace(/[^0-9.-]+/g, '')) || 0;
                 item.querySelector('.prix-unitaire').value = prix.toLocaleString() + ' KMF';
                 item.querySelector('.quantite').max = option.dataset.stock;
                 
                 const codeInput = item.querySelector('.code-produit');
+
                 if (codeInput) {
                     codeInput.value = option.dataset.code || codeInput.value;
                 }
 
-                // Widget Update
+                // Widget Update (sûr si image absent)
                 document.getElementById('dernier-article-nom').textContent = option.dataset.nom || option.textContent.split('(')[0];
-                document.getElementById('dernier-article-image').src = option.dataset.image;
+                const imgEl = document.getElementById('dernier-article-image');
+                if (imgEl && option.dataset.image) imgEl.src = option.dataset.image;
                 document.getElementById('dernier-article-widget').classList.remove('hidden');
                 
                 envoyerArticleEnLive(option.value, item.querySelector('.quantite').value);
@@ -396,8 +406,9 @@
                 const select = item.querySelector('.produit-select');
                 const qtyInput = item.querySelector('.quantite');
                 if (select.value && qtyInput.value) {
-                    const prix = parseFloat(select.selectedOptions[0].dataset.prix);
-                    const qty = parseInt(qtyInput.value);
+                    let prixRaw = select.selectedOptions[0].dataset.prix ?? '0';
+                    let prix = Number(String(prixRaw).replace(/[^0-9.-]+/g, '')) || 0;
+                    const qty = parseInt(qtyInput.value) || 0;
                     const subtotal = prix * qty;
                     item.querySelector('.total-ligne').value = subtotal.toLocaleString() + ' KMF';
                     totalQty += qty; totalCmd += subtotal;
