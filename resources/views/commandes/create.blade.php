@@ -171,6 +171,11 @@
             }
             
             if (e.key === 'Enter') {
+                const activeEl = document.activeElement;
+                if (activeEl && activeEl.tagName === 'INPUT') {
+                    e.preventDefault();
+                }
+
                 if (barcodeBuffer.trim().length >= 2) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -299,7 +304,7 @@
                                 <input type="text" class="code-produit block w-full rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5 text-sm font-bold text-gray-700 focus:border-blue-500 focus:outline-none" placeholder="Saisir le code" onkeydown="if(event.key === 'Enter'){event.preventDefault(); validerCodeProduit(this);}">
                                 <button type="button" onclick="validerCodeProduit(this)" class="rounded-xl bg-blue-600 px-3 py-2 text-sm font-black text-white transition hover:bg-blue-700">OK</button>
                             </div>
-                            <select name="items[${currentIndex}][produit_id]" class="produit-select hidden" required onchange="updatePrix(this)">
+                            <select class="produit-select hidden" onchange="updatePrix(this)">
                                 <option value="">Choisir...</option>
                                 ${produits.map(p => `<option value="${p.id}" ${p.id == produitId ? 'selected' : ''} data-prix="${p.prix}" data-stock="${p.stock}" data-image="${p.image}" data-code="${p.code_barre}" data-nom="${p.nom}">${p.nom} (Stock: ${p.stock})</option>`).join('')}
                             </select>
@@ -312,7 +317,7 @@
                         <div class="md:col-span-2">
                             <label class="mb-1 block text-center text-[10px] font-black uppercase tracking-widest text-gray-400">Quantité</label>
                             <div class="flex items-center">
-                                <input type="number" name="items[${currentIndex}][quantite]" class="quantite block w-full rounded-lg border border-gray-100 bg-gray-50 p-2 text-center font-black" min="1" value="1" required onchange="updatePrix(this.closest('.article-item').querySelector('.produit-select'))" oninput="updatePrix(this.closest('.article-item').querySelector('.produit-select'))">
+                                <input type="number" class="quantite block w-full rounded-lg border border-gray-100 bg-gray-50 p-2 text-center font-black" min="1" value="1" required onchange="updatePrix(this.closest('.article-item').querySelector('.produit-select'))" oninput="updatePrix(this.closest('.article-item').querySelector('.produit-select'))">
                             </div>
                         </div>
                         <div class="md:col-span-2">
@@ -429,6 +434,43 @@
                 body: JSON.stringify({ produit_id: produitId, quantite: quantite })
             }).catch(err => console.log('Offline'));
         }
+
+        // SÉCURISATION DU SUBMIT : Reconstitution des items au moment de soumettre
+        document.getElementById('commandeForm').addEventListener('submit', function(e) {
+            document.querySelectorAll('.generated-hidden-item').forEach(el => el.remove());
+
+            let idx = 0;
+            let visibleItems = document.querySelectorAll('.article-item');
+
+            if (visibleItems.length === 0) {
+                e.preventDefault();
+                alert('Veuillez ajouter au moins un produit dans le panier.');
+                return false;
+            }
+
+            visibleItems.forEach(item => {
+                const select = item.querySelector('.produit-select');
+                const qtyInput = item.querySelector('.quantite');
+
+                if (select && select.value && qtyInput && qtyInput.value) {
+                    let inputProd = document.createElement('input');
+                    inputProd.type = 'hidden';
+                    inputProd.className = 'generated-hidden-item';
+                    inputProd.name = `items[${idx}][produit_id]`;
+                    inputProd.value = select.value;
+                    this.appendChild(inputProd);
+
+                    let inputQty = document.createElement('input');
+                    inputQty.type = 'hidden';
+                    inputQty.className = 'generated-hidden-item';
+                    inputQty.name = `items[${idx}][quantite]`;
+                    inputQty.value = qtyInput.value;
+                    this.appendChild(inputQty);
+
+                    idx++;
+                }
+            });
+        });
 
         document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); });
     </script>
