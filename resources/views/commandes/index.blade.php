@@ -77,14 +77,14 @@
                                             </span>
                                         @endif
                                     </div>
-                                    <div class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">{{ $commande->date_commande->format('d M Y à H:i') }}</div>
+                                    <div class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">{{ $commande->date_commande ? $commande->date_commande->format('d M Y à H:i') : '' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-3">
                                         <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 border">
-                                            {{ substr($commande->client->nom, 0, 1) }}
+                                            {{ substr($commande->client->nom ?? 'C', 0, 1) }}
                                         </div>
-                                        <div class="text-sm font-bold text-gray-700">{{ $commande->client->nom }} {{ $commande->client->prenom }}</div>
+                                        <div class="text-sm font-bold text-gray-700">{{ $commande->client->nom ?? 'Client' }} {{ $commande->client->prenom ?? 'Occasionnel' }}</div>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
@@ -104,7 +104,10 @@
                                             Retour Partiel
                                         </span>
                                     @elseif ($commande->paiement)
-                                        <span class="inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 rounded-md bg-{{ $commande->paiement->statut_paiement == 'paye' ? 'green' : 'amber' }}-100 text-{{ $commande->paiement->statut_paiement == 'paye' ? 'green' : 'amber' }}-700 border border-{{ $commande->paiement->statut_paiement == 'paye' ? 'green' : 'amber' }}-200">
+                                        @php
+                                            $isPaye = in_array($commande->paiement->statut_paiement, ['paye', 'complete']);
+                                        @endphp
+                                        <span class="inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 rounded-md {{ $isPaye ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-amber-100 text-amber-700 border border-amber-200' }}">
                                             <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
                                             {{ $commande->paiement->statut_paiement_label }}
                                         </span>
@@ -118,12 +121,12 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-right">
                                     <div class="flex justify-end gap-2">
                                         <a href="{{ route('commandes.show', $commande) }}"
-                                            class="rounded-xl border border-gray-100 bg-white p-2.5 text-blue-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50">
+                                            class="rounded-xl border border-gray-100 bg-white p-2.5 text-blue-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50" title="Voir le détail">
                                             <i data-lucide="eye" class="w-4 h-4"></i>
                                         </a>
-                                        @if ($commande->statut == 'en_attente')
+                                        @if ($commande->statut == 'en_attente' && !$commande->paiement)
                                             <a href="{{ route('commandes.edit', $commande) }}"
-                                                class="rounded-xl border border-gray-100 bg-white p-2.5 text-gray-600 shadow-sm transition hover:border-gray-200 hover:bg-gray-100">
+                                                class="rounded-xl border border-gray-100 bg-white p-2.5 text-gray-600 shadow-sm transition hover:border-gray-200 hover:bg-gray-100" title="Modifier">
                                                 <i data-lucide="edit" class="w-4 h-4"></i>
                                             </a>
                                             <form method="POST" action="{{ route('commandes.destroy', $commande) }}"
@@ -131,7 +134,7 @@
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
-                                                    class="rounded-xl border border-gray-100 bg-white p-2.5 text-red-600 shadow-sm transition hover:border-red-200 hover:bg-red-50">
+                                                    class="rounded-xl border border-gray-100 bg-white p-2.5 text-red-600 shadow-sm transition hover:border-red-200 hover:bg-red-50" title="Supprimer">
                                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                                 </button>
                                             </form>
@@ -151,7 +154,7 @@
                     <div class="mx-auto mb-4 inline-flex h-20 w-20 items-center justify-center rounded-full border-4 border-dashed border-gray-200 bg-white text-gray-300 shadow-sm">
                         <i data-lucide="inbox" class="w-8 h-8"></i>
                     </div>
-                    <p class="text-lg font-bold text-gray-500">Aucun enregistrement pour le moment.</p>
+                    <p class="text-lg font-bold text-gray-500">Aucune commande enregistrée pour le moment.</p>
                 </div>
             @endif
         </div>
@@ -159,14 +162,10 @@
 
     {{-- MODAL INTERACTIF DE CLÔTURE DE CAISSE --}}
     <div id="clotureModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        {{-- Arrière-plan flouté sombre --}}
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm transition-opacity" onclick="closeClotureModal()"></div>
-
-            {{-- Element central pour forcer le centrage du modal --}}
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            {{-- Boîte du Modal --}}
             <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-gray-100">
                 <div class="bg-white px-6 pt-6 pb-4 sm:p-6 sm:pb-4">
                     <div class="sm:flex sm:items-start">
@@ -179,14 +178,13 @@
                             </h3>
                             <div class="mt-2">
                                 <p class="text-sm text-gray-500 font-medium leading-relaxed">
-                                    Êtes-vous sûr de vouloir fermer la caisse ? Cette action va compiler toutes les transactions, <span class="font-bold text-red-600">générer le rapport PDF</span> et l'envoyer directement dans votre boîte e-mail. Les modifications d'aujourd'hui seront verrouillées.
+                                    Êtes-vous sûr de vouloir fermer la caisse ? Cette action va compiler toutes les transactions, <span class="font-bold text-red-600">générer le rapport PDF</span> et l'envoyer directement dans votre boîte e-mail.
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                {{-- Actions de validation du Modal --}}
                 <div class="bg-gray-50 px-6 py-4 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
                     <form method="POST" action="{{ route('cloture.journee') }}" id="clotureForm">
                         @csrf
@@ -204,7 +202,7 @@
         </div>
     </div>
 
-    {{-- SCRIPTS POUR LA GESTION DÉDIÉE DU MODAL --}}
+    {{-- SCRIPTS DE GESTION DU MODAL --}}
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
@@ -213,27 +211,25 @@
         function openClotureModal() {
             const modal = document.getElementById('clotureModal');
             modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden'; // Bloque le scroll de la page
+            document.body.style.overflow = 'hidden';
             lucide.createIcons();
         }
 
         function closeClotureModal() {
             const modal = document.getElementById('clotureModal');
             modal.classList.add('hidden');
-            document.body.style.overflow = 'auto'; // Réactive le scroll de la page
+            document.body.style.overflow = 'auto';
         }
 
         function showLoadingState() {
             const confirmBtn = document.getElementById('confirmBtn');
             const cancelBtn = document.getElementById('cancelBtn');
             
-            // Changement cosmétique pour montrer que le mail et le PDF chargent
             confirmBtn.disabled = true;
             cancelBtn.disabled = true;
             confirmBtn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></span> Envoi en cours...';
             confirmBtn.classList.replace('bg-red-600', 'bg-red-400');
             
-            // Soumission du formulaire
             document.getElementById('clotureForm').submit();
         }
     </script>
