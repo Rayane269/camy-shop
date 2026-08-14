@@ -156,7 +156,9 @@
             const errorApi = document.getElementById('js_error_api');
             const errorMessage = document.getElementById('js_error_message');
             
-            const totalCommande = parseFloat(document.getElementById('total_commande').value);
+            // Robust parsing of the total (strip spaces/thousands separators)
+            const totalRaw = document.getElementById('total_commande').value;
+            const totalCommande = Number(String(totalRaw).replace(/[^0-9.-]+/g, '')) || 0;
 
             function initialiserCalculateur() {
                 blocMonnaie.classList.add('hidden');
