@@ -43,14 +43,13 @@ class PaiementController extends Controller
             'reference_transaction' => $validated['reference_transaction']
         ]);
 
-        // 3. MISE À JOUR CRUCIALE POUR LE TABLEAU DE BORD ADMIN
-        // On utilise 'completed' (avec un 'd') pour basculer du "Manque à gagner" au "Chiffre d'affaires"
+        // 3. MISE À JOUR DU STATUT DE LA COMMANDE
+        // On passe la commande en 'livree' dès le règlement complet
         if ($paiement->montant >= $commande->total) {
-            $commande->update(['statut' => 'completed']);
+            $commande->update(['statut' => 'livree']);
         }
 
         // 4. REDIRECTION VERS LE RÉCAPITULATIF DE LA COMMANDE
-        // Au lieu de 'commandes.ticket', on redirige vers 'commandes.show'
         return redirect()->route('commandes.show', $commande)
             ->with('success', 'Règlement enregistré avec succès ! Vous pouvez maintenant imprimer le ticket ci-dessous.');
     }
